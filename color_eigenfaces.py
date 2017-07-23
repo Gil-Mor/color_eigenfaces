@@ -205,10 +205,14 @@ def main(imgs_folder, color):
     if len(imgs_filenames) == 0:
         print("Couldn't find images in " + imgs_folder + " folder.")
         return
+    elif len(imgs_filenames) > 200:
+        ans = input("You have more than 200 images. This takes ~1 sec an image. Are you sure? (y/n)")
+        if ans.lower() != "y":
+            return
 
     # crop faces from images and save faces in output_folder
     for img in imgs_filenames:
-        print(img)
+        print("processing image " + img)
         # min face size: 200X200 px
         # cropped faces are sved in output folder
         crop_faces(imgs_folder + "/" + img, output_folder, min_size=200)
