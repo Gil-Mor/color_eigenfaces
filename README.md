@@ -8,9 +8,13 @@ Unfortunately, PCA can only work on 1 RGB channel at a time, so I split the imag
 to channels and apply PCA on each channel and then I merge the eigenfaces.
 The results are cool colored eigen faces.
 
-Try it. Usage:
-from cmdline:
-python eigen_face.py <path to images folder (can be relative to scripts)> [optional 'grey' for grey scale output]
+Try it. 
+
+Usage:
+You can drop an image folder on the dragndrop.bat script.
+
+Or from the cmd line:
+python color_eigenfaces.py <path to images folder (can be relative to scripts)> [optional 'grey' for grey scale output]
 
 Or you can manually edit the code.
 

@@ -9,11 +9,17 @@ from scipy.ndimage import imread
 from sklearn.decomposition import PCA
 import math
 
-# resize cropped faces to this size - needed for pca
+# resize cropped faces to this size - pca needs all images to be in the same size
 faces_h = faces_w = 500
 
 def plot_eigenfaces(images, h, w, color=False):
-
+    """
+    Plot eigen faces in matplotlib.
+    :param images: list of images of shape (len(images), h*w)
+    :param h: reshape images to (h,w)
+    :param w: reshape images to (h,w)
+    :param color: plot in color or grey scale
+    """
     n_row = n_col = int(math.sqrt(len(images)))
     if color:
         plot_shape = (h, w, 3)
@@ -37,25 +43,31 @@ def plot_eigenfaces(images, h, w, color=False):
 
 # ------------------------------------------------------------------
 
-def get_color_face(im, rgb_index):
+def get_one_channel_face(im, rgb_index):
     """
-    Necessary for pca. pca wants 2d array of shape (n_faces, h*w)
-    :param im: RGB image as ndarray of shape(h, w, 3)
-    :return: 2d array of shape (h,w) where each pixel is a single value instead of rgb.
+    Get 1 RGB channel of an image.
+    Given an image of shape (h,w,3) return a matrix of shape (h,w)
     """
     rgb = cv2.split(im) # at his point opencv doesn't transform the image to BGR.
     return rgb[rgb_index]
 # ------------------------------------------------------------------
 
-def get_color_faces(faces, rgb_index):
+def get_all_faces_one_channel(faces, rgb_index):
+    """
+    Split all faces images to discrete r,g,b channels.
+    """
     color_faces = []
     for face in faces:
-        color_faces.append(get_color_face(face, rgb_index))
+        color_faces.append(get_one_channel_face(face, rgb_index))
     return np.array(color_faces)
 # ------------------------------------------------------------------
 
-def combine_colors(discrete_rgb_images):
-
+def combine_color_channels(discrete_rgb_images):
+    """
+    Combine discrete r,g,b images to RGB iamges.
+    :param discrete_rgb_images:
+    :return:
+    """
     color_imgs = []
     for r,g,b in zip(*discrete_rgb_images):
         r = (255 * (r - np.max(r)) / -np.ptp(r)).astype(int)
@@ -68,9 +80,17 @@ def combine_colors(discrete_rgb_images):
 # ------------------------------------------------------------------
 
 def get_color_eigen_faces(faces, n_components):
-    red_faces = get_color_faces(faces, 0)
-    green_faces = get_color_faces(faces, 1)
-    blue_faces = get_color_faces(faces, 2)
+    """
+    Splits the faces to single RGB channels, perform pca on each channel
+    and in the end merges the eigenfaces to create color eigenfaces.
+    return: array of colored eigenfaces.
+    """
+
+    # since faces were now opened with scipy and not opencv they are in
+    # RGB format and not in BGR format.
+    red_faces = get_all_faces_one_channel(faces, 0)
+    green_faces = get_all_faces_one_channel(faces, 1)
+    blue_faces = get_all_faces_one_channel(faces, 2)
 
     color_faces = [red_faces, green_faces, blue_faces]
 
@@ -87,28 +107,38 @@ def get_color_eigen_faces(faces, n_components):
     for color_pca_face in color_pca_faces:
         color_eigen_faces.append(color_pca_face.components_.reshape((n_components, faces_h, faces_w)))
 
-    combine_color_eigen_faces = combine_colors(color_eigen_faces)
+    combine_color_eigen_faces = combine_color_channels(color_eigen_faces)
     return combine_color_eigen_faces
 # ------------------------------------------------------------------
 
 def get_grey_scale_eigen_faces(faces, n_components):
-    flat_faces = []
+    """
+    Get grey scale eigenfaces.
+    :return: array of grey scale eigenfaces
+    """
+    grey_faces = []
     for face in faces:
         grey_face = cv2.cvtColor(face, cv2.COLOR_BGR2GRAY)
-        flat_faces.append(grey_face)
-    flat_faces = np.array(flat_faces)
+        grey_faces.append(grey_face)
+    grey_faces = np.array(grey_faces)
 
-    flat_faces = flat_faces.reshape(flat_faces.shape[0], flat_faces.shape[1] * flat_faces.shape[2])
-    pca = PCA(n_components=n_components, whiten=False).fit(flat_faces)
+    grey_faces = grey_faces.reshape(grey_faces.shape[0], grey_faces.shape[1] * grey_faces.shape[2])
+    pca = PCA(n_components=n_components, whiten=False).fit(grey_faces)
     eigen_faces = pca.components_.reshape((n_components, faces_h, faces_w))
     return eigen_faces
 # ------------------------------------------------------------------
 
-def pca_faces(faces_folder, color=True):
+def pca_faces(faces_folder, color=True, n_components=9):
+    """
+    perform pca on cropped faces and plot eigenfaces.
+    :param faces_folder: folder with uniform size cropped faces
+    :param color: plot with color or grey scale
+    :param n_components: The number of principal components for pca.
+    :return: None
+    """
 
     faces_files = glob.glob(faces_folder + "/*.jpg")
     faces = np.array([imread(fname) for fname in faces_files])
-    n_components = 9
     if color:
         eigen_faces = get_color_eigen_faces(faces, n_components)
     else:
@@ -116,7 +146,7 @@ def pca_faces(faces_folder, color=True):
 
     plot_eigenfaces(eigen_faces, faces_h, faces_w, color)
 
-    # first save - show() resets the figure
+    # first save. show() resets the figure
     fname = faces_folder + "/eigen_faces"
     fname += "_color" if color else "_grey"
     plt.savefig(fname)
@@ -160,14 +190,18 @@ def crop_faces(image_path, outout_folder, min_size=400):
 #------------------------------------------------------------------
 
 def main(imgs_folder, color):
+
+
     output_folder = imgs_folder + "/cropped_faces"
     os.makedirs(output_folder, exist_ok=True)
 
+    # get images from input folder
     imgs_filenames = [os.path.basename(img) for img in glob.glob(imgs_folder + "/*.jpg")]
     if len(imgs_filenames) == 0:
         print("Couldn't find images in " + imgs_folder + " folder.")
         return
 
+    # crop faces from images and save faces in output_folder
     for img in imgs_filenames:
         print(img)
         # min face size: 200X200 px
@@ -179,16 +213,22 @@ def main(imgs_folder, color):
         print("No faces we're found. try changing min_size or get other pictures")
         return
 
+    # resize all cropped faces to the same size for pca
     resize_face_images(cropped_faces_folder)
+
+    # ask the user to manually delete some non-faces crops
     input("Go clean " + os.path.basename(cropped_faces_folder) + " folder from non-face images.\nPress Enter after you're done.")
-    pca_faces(cropped_faces_folder, color=color)
+
+    # perform pca and plot eigenfaces
+    pca_faces(cropped_faces_folder, color=color, n_components=9)
 
 # ------------------------------------------------------------------
 
 if __name__  == '__main__':
 
     if len(sys.argv) < 2:
-        print("Usage: <path to images folder> [optional 'grey' for grey scale output]\n")
+        print("Usage: drag n drop a folder on the dragndrop.bat script "
+              "\nOr give the argument via cmd line: <path to images folder> [optional 'grey' for grey scale output]\n")
         imgs_folder = "imgs"
     else:
         if os.path.exists(sys.argv[1]):
