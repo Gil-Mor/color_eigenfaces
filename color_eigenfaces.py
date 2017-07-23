@@ -20,6 +20,7 @@ def plot_eigenfaces(images, h, w, color=False):
     :param w: reshape images to (h,w)
     :param color: plot in color or grey scale
     """
+    
     n_row = n_col = int(math.sqrt(len(images)))
     if color:
         plot_shape = (h, w, 3)
@@ -48,6 +49,7 @@ def get_one_channel_face(im, rgb_index):
     Get 1 RGB channel of an image.
     Given an image of shape (h,w,3) return a matrix of shape (h,w)
     """
+    
     rgb = cv2.split(im) # at his point opencv doesn't transform the image to BGR.
     return rgb[rgb_index]
 # ------------------------------------------------------------------
@@ -56,6 +58,7 @@ def get_all_faces_one_channel(faces, rgb_index):
     """
     Split all faces images to discrete r,g,b channels.
     """
+    
     color_faces = []
     for face in faces:
         color_faces.append(get_one_channel_face(face, rgb_index))
@@ -68,8 +71,11 @@ def combine_color_channels(discrete_rgb_images):
     :param discrete_rgb_images:
     :return:
     """
+    
     color_imgs = []
     for r,g,b in zip(*discrete_rgb_images):
+        
+        # pca output is float64, positive and negative. normalize the images to [0, 255] rgb
         r = (255 * (r - np.max(r)) / -np.ptp(r)).astype(int)
         g = (255 * (g - np.max(g)) / -np.ptp(g)).astype(int)
         b = (255 * (b - np.max(b)) / -np.ptp(b)).astype(int)
@@ -190,8 +196,7 @@ def crop_faces(image_path, outout_folder, min_size=400):
 #------------------------------------------------------------------
 
 def main(imgs_folder, color):
-
-
+    
     output_folder = imgs_folder + "/cropped_faces"
     os.makedirs(output_folder, exist_ok=True)
 
@@ -217,7 +222,7 @@ def main(imgs_folder, color):
     resize_face_images(cropped_faces_folder)
 
     # ask the user to manually delete some non-faces crops
-    input("Go clean " + os.path.basename(cropped_faces_folder) + " folder from non-face images.\nPress Enter after you're done.")
+    input("\n\n*********** NOTE: ***********\nGo clean " + os.path.basename(cropped_faces_folder) + " folder from non-face images.\nPress Enter after you're done.")
 
     # perform pca and plot eigenfaces
     pca_faces(cropped_faces_folder, color=color, n_components=9)
