@@ -1,0 +1,6 @@
+# input/output dir
+imgs/
+
+# VS Code project files
+.vscode
+
