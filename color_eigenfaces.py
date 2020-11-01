@@ -174,7 +174,7 @@ def resize_face_images(faces_folder):
         cv2.imwrite(face, im)
 # ------------------------------------------------------------------
 
-def crop_faces(image_path, outout_folder, min_size=200):
+def crop_faces(image_path, output_folder, min_size=200):
     facedata = "haarcascade_frontalface_default.xml"
     cascade = cv2.CascadeClassifier(facedata)
 
@@ -196,7 +196,7 @@ def crop_faces(image_path, outout_folder, min_size=200):
         cv2.rectangle(img, (x,y), (x+w,y+h), (255,255,255))
 
         sub_face = img[y:y+h, x:x+w]
-        face_file_name = outout_folder + "/" + img_filename.replace(".jpg", "_face.jpg")
+        face_file_name = output_folder + "/" + img_filename.replace(".jpg", "_face.jpg")
         cv2.imwrite(face_file_name, sub_face)
 
 #------------------------------------------------------------------
