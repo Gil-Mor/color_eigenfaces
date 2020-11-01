@@ -27,6 +27,10 @@ opencv doesn't recognize faces at 100% so the scripts will ask you to go to the 
 inside your input imgs folder and delete all non-faces crops before it continues to get the eigenfaces.
 
 # Requires:
-python 3.5, opencv3, numpy, matplotlib, and scipy.
-I use Anaconda (As of 23.7.17 opencv module is not yet available for python 3.6 via pip or conda)
-With python 3.5 You can install opencv3 with 'conda install -c menpo opencv3'
+python3, opencv, scipy, sklearn, matplotlib, imageio.
+
+```bash
+sudo apt update && \
+sudo apt install -y python3-opencv && \
+pip3 install matplotlib scipy imageio sklearn
+```

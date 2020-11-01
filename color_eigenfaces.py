@@ -5,7 +5,8 @@ import os
 import glob
 import numpy as np
 from matplotlib import pyplot as plt
-from scipy.ndimage import imread
+# from scipy.ndimage import imread
+import imageio
 from sklearn.decomposition import PCA
 import math
 
@@ -144,7 +145,8 @@ def pca_faces(faces_folder, color=True, n_components=9):
     """
 
     faces_files = glob.glob(faces_folder + "/*.jpg")
-    faces = np.array([imread(fname) for fname in faces_files])
+    n_components = min(len(faces_files), 9)
+    faces = np.array([imageio.imread(fname) for fname in faces_files])
     if color:
         eigen_faces = get_color_eigen_faces(faces, n_components)
     else:
@@ -168,7 +170,7 @@ def resize_face_images(faces_folder):
         cv2.imwrite(face, im)
 # ------------------------------------------------------------------
 
-def crop_faces(image_path, outout_folder, min_size=400):
+def crop_faces(image_path, outout_folder, min_size=200):
     facedata = "haarcascade_frontalface_default.xml"
     cascade = cv2.CascadeClassifier(facedata)
 
@@ -215,7 +217,7 @@ def main(imgs_folder, color):
         print("processing image " + img)
         # min face size: 200X200 px
         # cropped faces are sved in output folder
-        crop_faces(imgs_folder + "/" + img, output_folder, min_size=200)
+        crop_faces(imgs_folder + "/" + img, output_folder, min_size=100)
 
     cropped_faces_folder = output_folder
     if len(glob.glob(cropped_faces_folder + "/*.jpg")) == 0:
@@ -236,8 +238,7 @@ def main(imgs_folder, color):
 if __name__  == '__main__':
 
     if len(sys.argv) < 2:
-        print("Usage: drag n drop a folder on the dragndrop.bat script "
-              "\nOr give the argument via cmd line: <path to images folder> [optional 'grey' for grey scale output]\n")
+        print("Usage: {} <path to images folder> ['grey' for grey scale output]".format(sys.argv[0]))
         imgs_folder = "imgs"
     else:
         if os.path.exists(sys.argv[1]):
