@@ -174,29 +174,41 @@ def resize_face_images(faces_folder):
         cv2.imwrite(face, im)
 # ------------------------------------------------------------------
 
-def crop_faces(image_path, output_folder, min_size=200):
+def crop_faces(image_path, output_folder):
     facedata = "haarcascade_frontalface_default.xml"
     cascade = cv2.CascadeClassifier(facedata)
 
     img = cv2.imread(image_path)
+    h, w = img.shape[0], img.shape[1]
+    # work with grey scale image, easier for the algorithm?
+    # grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    minisize = (img.shape[1],img.shape[0])
-    miniframe = cv2.resize(img, minisize)
+    faces = []
+    # Look for faces which are 95%-5% the size of the image.
+    # Look for bigger faces first to avoid false positives on small objects.
+    face_sizes = [i for i in range(95, -5, -10)]
+    for size in face_sizes:
+        minSize=(int((h/100)*size), int((w/100)*size))
+        faces = cascade.detectMultiScale(img,
+                                         scaleFactor=1.05,
+                                         minNeighbors=25,
+                                         minSize=(int((h/100)*size), int((w/100)*size))
+                                        )
+        if len(faces) > 0:
+            break
 
-    faces = cascade.detectMultiScale(miniframe,
-                                    scaleFactor=1.2,
-                                    minNeighbors=5,
-                                    minSize=(min_size, min_size)
-                                    )
+    print(("Found" if len(faces) > 0 else "Didn't find") + " faces in image: {}".format(image_path))
+    if len(faces) == 0:
+        return
 
     img_filename = os.path.basename(image_path)
-    for f in faces:
+    for i, f in enumerate(faces):
         x, y, w, h = [ v for v in f ]
 
         cv2.rectangle(img, (x,y), (x+w,y+h), (255,255,255))
 
         sub_face = img[y:y+h, x:x+w]
-        face_file_name = output_folder + "/" + img_filename.replace(".jpg", "_face.jpg")
+        face_file_name = output_folder + "/" + img_filename.replace(".jpg", "_face_{}.jpg".format(i+1))
         cv2.imwrite(face_file_name, sub_face)
 
 #------------------------------------------------------------------
@@ -220,14 +232,11 @@ def main(args):
 
     # crop faces from images and save faces in output_dir
     for img in imgs_filenames:
-        print("processing image " + img)
-        # min face size: 200X200 px
         # cropped faces are sved in output folder
-        crop_faces(input_dir + "/" + img, output_dir, min_size=100)
+        crop_faces(input_dir + "/" + img, output_dir)
 
     cropped_faces_folder = output_dir
     if len(glob.glob(cropped_faces_folder + "/*.jpg")) == 0:
-        print("No faces we're found. try changing min_size or get other pictures")
         return
 
     # resize all cropped faces to the same size for pca
