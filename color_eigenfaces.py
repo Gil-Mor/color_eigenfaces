@@ -21,8 +21,12 @@ def plot_eigenfaces(images, h, w, color=False):
     :param w: reshape images to (h,w)
     :param color: plot in color or grey scale
     """
-    
-    n_row = n_col = int(math.sqrt(len(images)))
+
+    if len(images) > 3:
+        n_row = n_col = int(math.sqrt(len(images)))
+    else:
+        n_row = 1
+        n_col = len(images)
     if color:
         plot_shape = (h, w, 3)
     else:
@@ -141,10 +145,11 @@ def get_grey_scale_eigen_faces(faces):
     return eigen_faces
 # ------------------------------------------------------------------
 
-def pca_faces(faces_folder, color=True):
+def pca_faces(faces_folder, output_folder, color=True):
     """
     perform pca on cropped faces and plot eigenfaces.
     :param faces_folder: folder with uniform size cropped faces
+    :param output_folder: folder to write output plot image to
     :param color: plot with color or grey scale
     :return: None
     """
@@ -154,12 +159,12 @@ def pca_faces(faces_folder, color=True):
     if color:
         eigen_faces = get_color_eigen_faces(faces)
     else:
-        eigen_faces = get_grey_scale_eigen_faces(faces)
+        eigen_faces = get_grey_scale_eigen_faces(faces) 
 
     plot_eigenfaces(eigen_faces, faces_h, faces_w, color)
 
     # first save. show() resets the figure
-    fname = faces_folder + "/eigen_faces"
+    fname = output_folder + "/eigen_faces"
     fname += "_color" if color else "_grey"
     plt.savefig(fname)
 
@@ -237,23 +242,25 @@ def main(args):
             return
 
     # crop faces from images and save faces in output_dir
+    faces_output_dir = output_dir + "/faces"
+    os.makedirs(faces_output_dir, exist_ok=True)
     for img in imgs_filenames:
         # cropped faces are sved in output folder
-        crop_faces(input_dir + "/" + img, output_dir)
+        crop_faces(input_dir + "/" + img, faces_output_dir)
 
-    if len(glob_images(output_dir)) == 0:
+    if len(glob_images(faces_output_dir)) == 0:
         print("Error: No faces found in images. Try 'simpler' images.")
         return
 
     # resize all cropped faces to the same size for pca
-    resize_face_images(output_dir)
+    resize_face_images(faces_output_dir)
 
     # ask the user to manually delete some non-faces crops
     if args.confirm:
-        input("\n\n*********** NOTE: ***********\nGo clean " + os.path.basename(output_dir) + " folder from non-face images.\nPress Enter after you're done.")
+        input("\n\n*********** NOTE: ***********\nGo clean " + os.path.basename(faces_output_dir) + " folder from non-face images.\nPress Enter after you're done.")
 
     # perform pca and plot eigenfaces
-    pca_faces(output_dir, color=(not args.grey))
+    pca_faces(faces_output_dir, output_dir, color=(not args.grey))
 
 # ------------------------------------------------------------------
 
