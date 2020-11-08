@@ -149,7 +149,7 @@ def pca_faces(faces_folder, color=True):
     :return: None
     """
 
-    faces_files = glob.glob(faces_folder + "/*.jpg")
+    faces_files = glob_images(faces_folder)
     faces = np.array([imageio.imread(fname) for fname in faces_files])
     if color:
         eigen_faces = get_color_eigen_faces(faces)
@@ -167,12 +167,18 @@ def pca_faces(faces_folder, color=True):
 # ------------------------------------------------------------------
 
 def resize_face_images(faces_folder):
-    faces_files = glob.glob(faces_folder + "/*.jpg")
+    faces_files = glob_images(faces_folder)
     for face in faces_files:
         im = cv2.imread(face)
         im = cv2.resize(im, (faces_h, faces_w))
         cv2.imwrite(face, im)
 # ------------------------------------------------------------------
+
+def glob_images(path):
+    res = []
+    for ext in [".jpg", ".jpeg", ".png"]:
+        res += glob.glob(path + "/*" + ext)
+    return res
 
 def crop_faces(image_path, output_folder):
     facedata = "haarcascade_frontalface_default.xml"
@@ -208,7 +214,8 @@ def crop_faces(image_path, output_folder):
         cv2.rectangle(img, (x,y), (x+w,y+h), (255,255,255))
 
         sub_face = img[y:y+h, x:x+w]
-        face_file_name = output_folder + "/" + img_filename.replace(".jpg", "_face_{}.jpg".format(i+1))
+        filename, _ = os.path.splitext(img_filename)
+        face_file_name = os.path.join(output_folder,filename + "_face_{}.jpg".format(i+1))
         cv2.imwrite(face_file_name, sub_face)
 
 #------------------------------------------------------------------
@@ -218,10 +225,9 @@ def main(args):
     output_dir = args.output_dir
     os.makedirs(output_dir, exist_ok=True)
     input_dir = args.input_dir
-    
 
     # get images from input folder
-    imgs_filenames = [os.path.basename(img) for img in glob.glob(input_dir + "/*.jpg")]
+    imgs_filenames = [os.path.basename(img) for img in glob_images(input_dir)]
     if len(imgs_filenames) == 0:
         print("Couldn't find images in " + input_dir + " folder.")
         return
@@ -235,19 +241,19 @@ def main(args):
         # cropped faces are sved in output folder
         crop_faces(input_dir + "/" + img, output_dir)
 
-    cropped_faces_folder = output_dir
-    if len(glob.glob(cropped_faces_folder + "/*.jpg")) == 0:
+    if len(glob_images(output_dir)) == 0:
+        print("Error: No faces found in images. Try 'simpler' images.")
         return
 
     # resize all cropped faces to the same size for pca
-    resize_face_images(cropped_faces_folder)
+    resize_face_images(output_dir)
 
     # ask the user to manually delete some non-faces crops
     if args.confirm:
-        input("\n\n*********** NOTE: ***********\nGo clean " + os.path.basename(cropped_faces_folder) + " folder from non-face images.\nPress Enter after you're done.")
+        input("\n\n*********** NOTE: ***********\nGo clean " + os.path.basename(output_dir) + " folder from non-face images.\nPress Enter after you're done.")
 
     # perform pca and plot eigenfaces
-    pca_faces(cropped_faces_folder, color=(not args.grey))
+    pca_faces(output_dir, color=(not args.grey))
 
 # ------------------------------------------------------------------
 
