@@ -90,7 +90,7 @@ def combine_color_channels(discrete_rgb_images):
 
 # ------------------------------------------------------------------
 
-def get_color_eigen_faces(faces):
+def get_color_eigen_faces(faces, n_components):
     """
     Splits the faces to single RGB channels, perform pca on each channel
     and in the end merges the eigenfaces to create color eigenfaces.
@@ -111,9 +111,9 @@ def get_color_eigen_faces(faces):
 
     color_faces = reshaped_color_faces
     color_pca_faces = []
-    # The number of principal components for pca. At most 9,
-    # but allow less if there are less faces.
-    n_components = min(len(faces), 9)
+    # The number of principal components for pca.
+    # Can't be less then input length
+    n_components = min(len(faces), n_components)
     for color_face in color_faces:
         color_pca_faces.append(PCA(n_components=n_components, whiten=False).fit(color_face))
 
@@ -125,7 +125,7 @@ def get_color_eigen_faces(faces):
     return combine_color_eigen_faces
 # ------------------------------------------------------------------
 
-def get_grey_scale_eigen_faces(faces):
+def get_grey_scale_eigen_faces(faces, n_components):
     """
     Get grey scale eigenfaces.
     :return: array of grey scale eigenfaces
@@ -137,15 +137,15 @@ def get_grey_scale_eigen_faces(faces):
     grey_faces = np.array(grey_faces)
 
     grey_faces = grey_faces.reshape(grey_faces.shape[0], grey_faces.shape[1] * grey_faces.shape[2])
-    # The number of principal components for pca. At most 9,
-    # but allow less if there are less faces.
-    n_components = min(len(faces), 9)
+    # The number of principal components for pca.
+    # Can't be less then input length
+    n_components = min(len(faces), n_components)
     pca = PCA(n_components=n_components, whiten=False).fit(grey_faces)
     eigen_faces = pca.components_.reshape((n_components, faces_h, faces_w))
     return eigen_faces
 # ------------------------------------------------------------------
 
-def pca_faces(faces_folder, output_folder, color=True):
+def pca_faces(faces_folder, output_folder, n_components, color=True):
     """
     perform pca on cropped faces and plot eigenfaces.
     :param faces_folder: folder with uniform size cropped faces
@@ -157,9 +157,9 @@ def pca_faces(faces_folder, output_folder, color=True):
     faces_files = glob_images(faces_folder)
     faces = np.array([imageio.imread(fname) for fname in faces_files])
     if color:
-        eigen_faces = get_color_eigen_faces(faces)
+        eigen_faces = get_color_eigen_faces(faces, n_components)
     else:
-        eigen_faces = get_grey_scale_eigen_faces(faces) 
+        eigen_faces = get_grey_scale_eigen_faces(faces, n_components) 
 
     plot_eigenfaces(eigen_faces, faces_h, faces_w, color)
 
@@ -260,7 +260,7 @@ def main(args):
         input("\n\n*********** NOTE: ***********\nGo clean " + os.path.basename(faces_output_dir) + " folder from non-face images.\nPress Enter after you're done.")
 
     # perform pca and plot eigenfaces
-    pca_faces(faces_output_dir, output_dir, color=(not args.grey))
+    pca_faces(faces_output_dir, output_dir, args.n_components, color=(not args.grey))
 
 # ------------------------------------------------------------------
 
@@ -278,6 +278,11 @@ def parse_args(args=sys.argv):
     parser.add_argument("-o", "--output-dir", help="path to output folder."
                         " If no input is given, the supplied example ./output will be used.",
                         type=str, default="output")
+    parser.add_argument("-n", "--n-components", help="Number of components for PCA."
+                        " The number of Eigen Faces to generate."
+                        " If there are less faces than this, then the number of faces"
+                        " Will be used (n components < number of input images)",
+                        type=int, default=9)
     parser.add_argument("-grey", "--grey-scale", dest="grey", help="Output in grey-scale."
                         " So you can compare with Normal eigenfaces output.",
                         default=False, action='store_true')
