@@ -155,6 +155,7 @@ def pca_faces(faces_folder, output_folder, n_components, color=True):
     """
 
     faces_files = glob_images(faces_folder)
+    print("Doing PCA for {} faces".format(len(faces_files)))
     faces = np.array([imageio.imread(fname) for fname in faces_files])
     if color:
         eigen_faces = get_color_eigen_faces(faces, n_components)
@@ -225,42 +226,56 @@ def crop_faces(image_path, output_folder):
 
 #------------------------------------------------------------------
 
-def main(args):
-    
-    output_dir = args.output_dir
-    os.makedirs(output_dir, exist_ok=True)
-    input_dir = args.input_dir
 
+def prepare_faces_for_pca(input_dir, output_dir, confirm=False):
     # get images from input folder
     imgs_filenames = [os.path.basename(img) for img in glob_images(input_dir)]
     if len(imgs_filenames) == 0:
         print("Couldn't find images in " + input_dir + " folder.")
         return
     elif len(imgs_filenames) > 200:
-        ans = input("You have more than 200 images. This takes ~1 sec an image. Are you sure? (y/n)")
+        ans = input("You have more than 200 images. This can take some minutes. Are you sure? (y/n)")
         if ans.lower() != "y":
             return
 
-    # crop faces from images and save faces in output_dir
-    faces_output_dir = output_dir + "/faces"
-    os.makedirs(faces_output_dir, exist_ok=True)
+    faces_dir = output_dir + "/faces"
+    os.makedirs(faces_dir, exist_ok=True)
     for img in imgs_filenames:
         # cropped faces are sved in output folder
-        crop_faces(input_dir + "/" + img, faces_output_dir)
+        crop_faces(input_dir + "/" + img, faces_dir)
 
-    if len(glob_images(faces_output_dir)) == 0:
+    if len(glob_images(faces_dir)) == 0:
         print("Error: No faces found in images. Try 'simpler' images.")
         return
 
     # resize all cropped faces to the same size for pca
-    resize_face_images(faces_output_dir)
+    resize_face_images(faces_dir)
 
     # ask the user to manually delete some non-faces crops
-    if args.confirm:
-        input("\n\n*********** NOTE: ***********\nGo clean " + os.path.basename(faces_output_dir) + " folder from non-face images.\nPress Enter after you're done.")
+    if confirm:
+        input("\n\n*********** NOTE: ***********\nGo clean " + os.path.basename(faces_dir) + " folder from non-face images.\nPress Enter after you're done.")
+
+    return faces_dir
+
+
+def main(args):
+    
+    output_dir = args.output_dir
+    os.makedirs(output_dir, exist_ok=True)
+    input_dir = args.input_dir
+
+    if len(glob_images(input_dir)) == 0:
+        print("Couldn't find images in " + input_dir + " folder.")
+        return
+
+    if not args.resume:
+        # crop faces from images and save faces in output_dir
+        faces_dir = prepare_faces_for_pca(input_dir, output_dir, args.confirm)
+    else:
+        faces_dir = input_dir
 
     # perform pca and plot eigenfaces
-    pca_faces(faces_output_dir, output_dir, args.n_components, color=(not args.grey))
+    pca_faces(faces_dir, output_dir, args.n_components, color=(not args.grey))
 
 # ------------------------------------------------------------------
 
@@ -290,6 +305,11 @@ def parse_args(args=sys.argv):
                         " the user to check the output of the interim stage of cropping faces"
                         " From input images. If True, the user will need to check that <output folder>/cropped_faces contains only faces. This is because we can't count on opencv to always make correct decisions, so non-face images can accidentally be used to create the Eigen faces.",
                         default=False, action='store_true')
+    parser.add_argument("-r", "--resume", help="Resume from already cropped, PCA ready, faces."
+                        " This will skip face search and cropping stages and apply PCA directly."
+                        " Use -d,--input-dir option for input folder."
+                        " In this case, the input dir should be <some output dir>/faces.",
+                        default=False, action="store_true")
 
     return parser.parse_args(args)
 
