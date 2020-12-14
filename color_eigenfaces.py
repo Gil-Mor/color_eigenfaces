@@ -13,6 +13,7 @@ import argparse
 # resize cropped faces to this size - pca needs all images to be in the same size
 faces_h = faces_w = 500
 
+
 def plot_eigenfaces(images, h, w, color=False):
     """
     Plot eigen faces in matplotlib.
@@ -30,7 +31,7 @@ def plot_eigenfaces(images, h, w, color=False):
     if color:
         plot_shape = (h, w, 3)
     else:
-        plot_shape = (h,w)
+        plot_shape = (h, w)
 
     fig = plt.figure(figsize=(1.5 * n_col, 1.5 * n_row))
 
@@ -47,28 +48,28 @@ def plot_eigenfaces(images, h, w, color=False):
             ax.spines[pos].set_edgecolor('#e3dd00')
     plt.tight_layout()
 
-# ------------------------------------------------------------------
 
 def get_one_channel_face(im, rgb_index):
     """
     Get 1 RGB channel of an image.
     Given an image of shape (h,w,3) return a matrix of shape (h,w)
     """
-    
-    rgb = cv2.split(im) # at his point opencv doesn't transform the image to BGR.
+
+    # at his point opencv doesn't transform the image to BGR.
+    rgb = cv2.split(im)
     return rgb[rgb_index]
-# ------------------------------------------------------------------
+
 
 def get_all_faces_one_channel(faces, rgb_index):
     """
     Split all faces images to discrete r,g,b channels.
     """
-    
+
     color_faces = []
     for face in faces:
         color_faces.append(get_one_channel_face(face, rgb_index))
     return np.array(color_faces)
-# ------------------------------------------------------------------
+
 
 def combine_color_channels(discrete_rgb_images):
     """
@@ -76,10 +77,10 @@ def combine_color_channels(discrete_rgb_images):
     :param discrete_rgb_images:
     :return:
     """
-    
+
     color_imgs = []
-    for r,g,b in zip(*discrete_rgb_images):
-        
+    for r, g, b in zip(*discrete_rgb_images):
+
         # pca output is float64, positive and negative. normalize the images to [0, 255] rgb
         r = (255 * (r - np.max(r)) / -np.ptp(r)).astype(int)
         g = (255 * (g - np.max(g)) / -np.ptp(g)).astype(int)
@@ -88,7 +89,6 @@ def combine_color_channels(discrete_rgb_images):
         color_imgs.append(cv2.merge((r, g, b)))
     return color_imgs
 
-# ------------------------------------------------------------------
 
 def get_color_eigen_faces(faces, n_components):
     """
@@ -107,7 +107,8 @@ def get_color_eigen_faces(faces, n_components):
 
     reshaped_color_faces = []
     for i, face in enumerate(color_faces):
-        reshaped_color_faces.append(face.reshape((face.shape[0], face.shape[1] * face.shape[2])))
+        reshaped_color_faces.append(face.reshape(
+            (face.shape[0], face.shape[1] * face.shape[2])))
 
     color_faces = reshaped_color_faces
     color_pca_faces = []
@@ -115,15 +116,17 @@ def get_color_eigen_faces(faces, n_components):
     # Can't be less then input length
     n_components = min(len(faces), n_components)
     for color_face in color_faces:
-        color_pca_faces.append(PCA(n_components=n_components, whiten=False).fit(color_face))
+        color_pca_faces.append(
+            PCA(n_components=n_components, whiten=False).fit(color_face))
 
     color_eigen_faces = []
     for color_pca_face in color_pca_faces:
-        color_eigen_faces.append(color_pca_face.components_.reshape((n_components, faces_h, faces_w)))
+        color_eigen_faces.append(color_pca_face.components_.reshape(
+            (n_components, faces_h, faces_w)))
 
     combine_color_eigen_faces = combine_color_channels(color_eigen_faces)
     return combine_color_eigen_faces
-# ------------------------------------------------------------------
+
 
 def get_grey_scale_eigen_faces(faces, n_components):
     """
@@ -136,14 +139,15 @@ def get_grey_scale_eigen_faces(faces, n_components):
         grey_faces.append(grey_face)
     grey_faces = np.array(grey_faces)
 
-    grey_faces = grey_faces.reshape(grey_faces.shape[0], grey_faces.shape[1] * grey_faces.shape[2])
+    grey_faces = grey_faces.reshape(
+        grey_faces.shape[0], grey_faces.shape[1] * grey_faces.shape[2])
     # The number of principal components for pca.
     # Can't be less then input length
     n_components = min(len(faces), n_components)
     pca = PCA(n_components=n_components, whiten=False).fit(grey_faces)
     eigen_faces = pca.components_.reshape((n_components, faces_h, faces_w))
     return eigen_faces
-# ------------------------------------------------------------------
+
 
 def pca_faces(faces_folder, output_folder, n_components, color=True):
     """
@@ -160,7 +164,7 @@ def pca_faces(faces_folder, output_folder, n_components, color=True):
     if color:
         eigen_faces = get_color_eigen_faces(faces, n_components)
     else:
-        eigen_faces = get_grey_scale_eigen_faces(faces, n_components) 
+        eigen_faces = get_grey_scale_eigen_faces(faces, n_components)
 
     plot_eigenfaces(eigen_faces, faces_h, faces_w, color)
 
@@ -170,7 +174,7 @@ def pca_faces(faces_folder, output_folder, n_components, color=True):
     plt.savefig(fname)
 
     plt.show()
-# ------------------------------------------------------------------
+
 
 def resize_face_images(faces_folder):
     faces_files = glob_images(faces_folder)
@@ -178,7 +182,7 @@ def resize_face_images(faces_folder):
         im = cv2.imread(face)
         im = cv2.resize(im, (faces_h, faces_w))
         cv2.imwrite(face, im)
-# ------------------------------------------------------------------
+
 
 def glob_images(path):
     res = []
@@ -186,45 +190,44 @@ def glob_images(path):
         res += glob.glob(path + "/*" + ext)
     return res
 
+
 def crop_faces(image_path, output_folder):
     facedata = "haarcascade_frontalface_default.xml"
     cascade = cv2.CascadeClassifier(facedata)
 
     img = cv2.imread(image_path)
     h, w = img.shape[0], img.shape[1]
-    # work with grey scale image, easier for the algorithm?
-    # grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
     faces = []
     # Look for faces which are 95%-5% the size of the image.
     # Look for bigger faces first to avoid false positives on small objects.
     face_sizes = [i for i in range(95, -5, -10)]
     for size in face_sizes:
-        minSize=(int((h/100)*size), int((w/100)*size))
+        minSize = (int((h/100)*size), int((w/100)*size))
         faces = cascade.detectMultiScale(img,
                                          scaleFactor=1.05,
                                          minNeighbors=25,
-                                         minSize=(int((h/100)*size), int((w/100)*size))
-                                        )
+                                         minSize=(int((h/100)*size),
+                                                  int((w/100)*size))
+                                         )
         if len(faces) > 0:
             break
 
-    print(("Found" if len(faces) > 0 else "Didn't find") + " faces in image: {}".format(image_path))
+    print(("Found" if len(faces) > 0 else "Didn't find") +
+          " faces in image: {}".format(image_path))
     if len(faces) == 0:
         return
 
     img_filename = os.path.basename(image_path)
     for i, f in enumerate(faces):
-        x, y, w, h = [ v for v in f ]
+        x, y, w, h = [v for v in f]
 
-        cv2.rectangle(img, (x,y), (x+w,y+h), (255,255,255))
+        cv2.rectangle(img, (x, y), (x+w, y+h), (255, 255, 255))
 
         sub_face = img[y:y+h, x:x+w]
         filename, _ = os.path.splitext(img_filename)
-        face_file_name = os.path.join(output_folder,filename + "_face_{}.jpg".format(i+1))
+        face_file_name = os.path.join(
+            output_folder, filename + "_face_{}.jpg".format(i+1))
         cv2.imwrite(face_file_name, sub_face)
-
-#------------------------------------------------------------------
 
 
 def prepare_faces_for_pca(input_dir, output_dir, confirm=False):
@@ -234,7 +237,8 @@ def prepare_faces_for_pca(input_dir, output_dir, confirm=False):
         print("Couldn't find images in " + input_dir + " folder.")
         return
     elif len(imgs_filenames) > 200:
-        ans = input("You have more than 200 images. This can take some minutes. Are you sure? (y/n)")
+        ans = input(
+            "You have more than 200 images. This can take some minutes. Are you sure? (y/n)")
         if ans.lower() != "y":
             return
 
@@ -253,13 +257,13 @@ def prepare_faces_for_pca(input_dir, output_dir, confirm=False):
 
     # ask the user to manually delete some non-faces crops
     if confirm:
-        input("\n\n*********** NOTE: ***********\nGo clean " + os.path.basename(faces_dir) + " folder from non-face images.\nPress Enter after you're done.")
+        input("\n\n*********** NOTE: ***********\nGo clean " + os.path.basename(faces_dir) +
+              " folder from non-face images.\nPress Enter after you're done.")
 
     return faces_dir
 
 
 def main(args):
-    
     output_dir = args.output_dir
     os.makedirs(output_dir, exist_ok=True)
     input_dir = args.input_dir
@@ -277,7 +281,6 @@ def main(args):
     # perform pca and plot eigenfaces
     pca_faces(faces_dir, output_dir, args.n_components, color=(not args.grey))
 
-# ------------------------------------------------------------------
 
 def parse_args(args=sys.argv):
     """Parse arguments."""
@@ -314,6 +317,5 @@ def parse_args(args=sys.argv):
     return parser.parse_args(args)
 
 
-if __name__  == '__main__':
+if __name__ == '__main__':
     main(parse_args())
-
